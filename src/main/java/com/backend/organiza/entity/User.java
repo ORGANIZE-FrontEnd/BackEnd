@@ -1,8 +1,8 @@
 package com.backend.organiza.entity;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.Data;
-import org.hibernate.annotations.NotFound;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -21,6 +21,8 @@ public class User {
     private String phone;
     private LocalDate birthday;
     private String password;
-    private List<Transaction> incomeList;
-    private List<Transaction> expenseList;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.REMOVE)
+    @JsonManagedReference
+    private List<Transaction> transactions;
 }
