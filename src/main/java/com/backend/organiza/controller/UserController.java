@@ -1,35 +1,46 @@
 package com.backend.organiza.controller;
 
-import com.backend.organiza.dtos.UserDTO;
+import com.backend.organiza.dtos.LoginResponse;
+import com.backend.organiza.dtos.LoginUserDto;
+import com.backend.organiza.dtos.UserRegistrationDTO;
 import com.backend.organiza.entity.User;
+import com.backend.organiza.service.JwtService;
 import com.backend.organiza.service.UserService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 @RestController
+@CrossOrigin
 @RequestMapping("/api/users")
 public class UserController {
 
-    @Autowired
-    private UserService userService;
+    private final JwtService jwtService;
+
+    private final UserService userService;
+
+    public UserController(JwtService jwtService, UserService userService) {
+        this.jwtService = jwtService;
+        this.userService = userService;
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<LoginResponse> authenticate(@RequestBody LoginUserDto loginUserDto) {
+        User authenticatedUser = userService.authenticate(loginUserDto);
+        String jwtToken = jwtService.generateToken(authenticatedUser);
+        LoginResponse loginResponse = new LoginResponse(jwtToken, jwtService.getExpirationTime());
+        return ResponseEntity.ok(loginResponse);
+    }
 
     @PostMapping("/create")
-    public ResponseEntity<User> createUser(@RequestBody UserDTO userDTO) {
+    public ResponseEntity<User> createUser(@RequestBody UserRegistrationDTO userDTO) {
         User savedUser = userService.createUser(userDTO);
         return ResponseEntity.status(HttpStatus.CREATED).body(savedUser);
     }
 
-
-    @GetMapping
-    public List<User> getAllUsers() {
-        return userService.getAllUsers();
-    }
 
     @GetMapping("/{id}")
     public ResponseEntity<User> getUserById(@PathVariable UUID id) {
