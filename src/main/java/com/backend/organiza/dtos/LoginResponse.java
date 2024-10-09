@@ -1,4 +1,5 @@
 package com.backend.organiza.dtos;
 
-public record LoginResponse(String token, long expiresIn) {
+public record LoginResponse(TokenDTO accessToken, TokenDTO refreshToken) {
 }
+

@@ -56,6 +56,12 @@ public class UserService {
         return userRepository.findById(id);
     }
 
+    public Optional<User> getUserByUsername(String email) {
+        return userRepository.findByEmail(email);
+    }
+
+
+
     public User updateUser(UUID id, User user) {
         if (userRepository.existsById(id)) {
             user.setId(id);
@@ -71,4 +77,15 @@ public class UserService {
         }
         return false;
     }
+
+    public void saveRefreshToken(User user, String refreshToken) {
+        user.setRefreshToken(refreshToken);
+        userRepository.save(user);
+    }
+
+    public void invalidateRefreshToken(User user) {
+        user.setRefreshToken(null);
+        userRepository.save(user);
+    }
+
 }
