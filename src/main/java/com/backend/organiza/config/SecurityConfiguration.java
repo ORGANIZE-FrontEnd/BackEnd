@@ -34,7 +34,7 @@ public class SecurityConfiguration {
         http.csrf()
                 .disable()
                 .authorizeHttpRequests()
-                .requestMatchers("/api/users/login", "/api/users/create")
+                .requestMatchers("/api/users/login", "/api/users/create", "/api/users/refreshAccessToken/{refreshToken}")
                 .permitAll()
                 .requestMatchers(HttpMethod.OPTIONS).permitAll()
                 .anyRequest()

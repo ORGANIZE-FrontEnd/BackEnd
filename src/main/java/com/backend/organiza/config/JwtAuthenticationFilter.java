@@ -17,13 +17,16 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.servlet.HandlerExceptionResolver;
 
 import java.io.IOException;
+import java.util.logging.Logger;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
-    private final HandlerExceptionResolver handlerExceptionResolver;
 
+    private final HandlerExceptionResolver handlerExceptionResolver;
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
+
+    private static final Logger logger = Logger.getLogger(JwtAuthenticationFilter.class.getName());
 
     public JwtAuthenticationFilter(
             JwtService jwtService,
@@ -42,21 +45,26 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
         final String jwt = request.getHeader("X-ORGANIZA-JWT");
+        logger.info("Received request to: " + request.getRequestURI());
 
         if (jwt == null) {
+            logger.warning("JWT token is missing in the request header");
             filterChain.doFilter(request, response);
             return;
         }
 
         try {
             final String userEmail = jwtService.extractUsername(jwt);
+            logger.info("Extracted username from JWT: " + userEmail);
 
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
             if (userEmail != null && authentication == null) {
                 UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
+                logger.info("Loaded UserDetails for: " + userEmail);
 
                 if (jwtService.isTokenValid(jwt, userDetails)) {
+                    logger.info("JWT is valid for user: " + userEmail);
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                             userDetails,
                             null,
@@ -65,11 +73,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
+                } else {
+                    logger.warning("JWT is invalid or expired for user: " + userEmail);
                 }
+            } else {
+                logger.info("User is already authenticated or userEmail is null");
             }
 
             filterChain.doFilter(request, response);
         } catch (Exception exception) {
+            logger.severe("Exception occurred during JWT authentication: " + exception.getMessage());
             handlerExceptionResolver.resolveException(request, response, null, exception);
         }
     }

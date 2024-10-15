@@ -31,9 +31,22 @@ public class UserController {
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> authenticate(@RequestBody LoginUserDto loginUserDto) {
         User authenticatedUser = userService.authenticate(loginUserDto);
-        String accessTokenJwt = jwtService.generateToken(authenticatedUser, JwtService.TokenType.ACCESS_TOKEN);
-        String refreshTokenJwt = jwtService.generateToken(authenticatedUser, JwtService.TokenType.REFRESH_TOKEN);
 
+
+        String accessTokenJwt = jwtService.generateToken(authenticatedUser, JwtService.TokenType.ACCESS_TOKEN);
+        //validate if creating a new refresh token is necessary
+        if(authenticatedUser.getRefreshToken() != null){
+            if(jwtService.isTokenValid(authenticatedUser.getRefreshToken(), authenticatedUser)){
+                LoginResponse loginResponse = new LoginResponse(
+                        new TokenDTO(accessTokenJwt, jwtService.getAccessTokenExpiration()),
+                        new TokenDTO(authenticatedUser.getRefreshToken(), jwtService.getRefreshTokenExpiration())
+                );
+                return ResponseEntity.ok(loginResponse);
+            }
+        }
+
+
+        String refreshTokenJwt = jwtService.generateToken(authenticatedUser, JwtService.TokenType.REFRESH_TOKEN);
         userService.saveRefreshToken(authenticatedUser, refreshTokenJwt);
 
         LoginResponse loginResponse = new LoginResponse(
@@ -49,12 +62,13 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.CREATED).body(savedUser);
     }
 
-    @PostMapping("/refreshAccessToken")
-    public ResponseEntity<?> refreshAccessToken(String refreshToken) {
+    @GetMapping("/refreshAccessToken/{refreshToken}")
+    public ResponseEntity<?> refreshAccessToken(@PathVariable String refreshToken) {
 
         // Step 1: Validate the refresh token signature and expiration
         if (jwtService.isTokenExpired(refreshToken)) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Expired refresh token");
+
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Expired refresh token expirationTime: {}" + jwtService.getRefreshTokenExpiration());
         }
 
         // Step 2: Extract the username from the refresh token
@@ -75,12 +89,27 @@ public class UserController {
         // Step 5: Generate a new access token
         String newAccessToken = jwtService.generateToken(authenticatedUser.get(), JwtService.TokenType.ACCESS_TOKEN);
 
-        // Optional: You may want to rotate the refresh token and store the new one
-//        String newRefreshToken = jwtService.generateToken(authenticatedUser, JwtService.TokenType.REFRESH_TOKEN);
-//        userService.saveRefreshToken(authenticatedUser, newRefreshToken);
-
         return ResponseEntity.ok(new TokenDTO(newAccessToken, jwtService.getAccessTokenExpiration()));
     }
+
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(@RequestBody String refreshToken) {
+
+        String username = jwtService.extractUsername(refreshToken);
+
+        Optional<User> authenticatedUser = userService.getUserByUsername(username);
+        if (authenticatedUser.isEmpty() || !username.equals(authenticatedUser.get().getUsername())) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not found or doesnt match the auth user");
+        }
+
+        if (!authenticatedUser.get().getRefreshToken().equals(refreshToken)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid refresh token");
+        }
+
+        userService.invalidateRefreshToken(authenticatedUser.get());
+        return ResponseEntity.ok("User logged out successfully!");
+    }
+
 
 
 

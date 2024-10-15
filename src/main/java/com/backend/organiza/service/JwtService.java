@@ -1,14 +1,16 @@
 package com.backend.organiza.service;
 
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import lombok.Getter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
-import io.jsonwebtoken.Claims;
 
 import java.security.Key;
 import java.util.Date;
@@ -18,6 +20,8 @@ import java.util.function.Function;
 
 @Service
 public class JwtService {
+
+    private static final Logger logger = LoggerFactory.getLogger(JwtService.class);
 
     public enum TokenType {
         ACCESS_TOKEN,
@@ -75,12 +79,25 @@ public class JwtService {
 
     public boolean isTokenValid(String token, UserDetails userDetails) {
         final String username = extractUsername(token);
-        return (username.equals(userDetails.getUsername())) && isTokenExpired(token);
+        logger.info("Validating token for user: {}", username);
+
+        if (username == null || !username.equals(userDetails.getUsername())) {
+            logger.warn("Token username doesn't match user details or is null.");
+            return false;
+        }
+
+        boolean isExpired = isTokenExpired(token);
+        logger.info("Token expiration status for user {}: {}", username, isExpired ? "Expired" : "Valid");
+
+        return !isExpired;
     }
 
 
+
     public boolean isTokenExpired(String token) {
-        return !extractExpiration(token).before(new Date());
+        Date expirationDate = extractExpiration(token);
+        logger.info("Token expiration date: {}", expirationDate);
+        return expirationDate.before(new Date());
     }
 
     private Date extractExpiration(String token) {
