@@ -8,7 +8,7 @@ public class ValidatorUtil {
     public static Optional<String> validateCategory(String category, String transactionType) {
         List<String> validCategories = transactionType.equals("income") ?
                 List.of("Emprestimos", "Investimentos", "Salario", "Outras receitas") :
-                List.of("Alimentação", "Transporte", "Saúde", "Educação", "Lazer", "Outros");
+                List.of("Alimentacao", "Transporte", "Saude", "Educacao", "Lazer", "Outros");
 
         return validCategories.contains(category) ? Optional.empty() :
                 Optional.of("Invalid " + transactionType + " category: " + category);

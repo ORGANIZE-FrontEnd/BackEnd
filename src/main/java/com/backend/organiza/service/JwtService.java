@@ -51,21 +51,22 @@ public class JwtService {
         return claimsResolver.apply(claims);
     }
 
-    public String generateToken(UserDetails userDetails, TokenType tokenType) {
-        return generateToken(new HashMap<>(), userDetails, tokenType);
+    public String generateToken(UserDetails userDetails, TokenType tokenType, String userId) {
+        return generateToken(new HashMap<>(), userDetails, tokenType, userId);
     }
 
-    public String generateToken(Map<String, Object> extraClaims, UserDetails userDetails, TokenType tokenType) {
+    public String generateToken(Map<String, Object> extraClaims, UserDetails userDetails, TokenType tokenType, String userId) {
         return tokenType == TokenType.ACCESS_TOKEN ?
-                buildToken(extraClaims, userDetails, accessTokenExpiration) :
-                buildToken(extraClaims, userDetails, refreshTokenExpiration);
+                buildToken(extraClaims, userDetails, accessTokenExpiration, userId) :
+                buildToken(extraClaims, userDetails, refreshTokenExpiration, userId);
     }
 
 
     private String buildToken(
             Map<String, Object> extraClaims,
             UserDetails userDetails,
-            long expiration
+            long expiration,
+            String userId
     ) {
         return Jwts
                 .builder()
@@ -73,6 +74,7 @@ public class JwtService {
                 .setSubject(userDetails.getUsername())
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + expiration))
+                .setId(userId)
                 .signWith(getSignInKey(), SignatureAlgorithm.HS256)
                 .compact();
     }

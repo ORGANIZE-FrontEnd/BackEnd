@@ -1,6 +1,7 @@
 package com.backend.organiza.config;
 
 import com.backend.organiza.service.JwtService;
+import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -53,6 +54,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
+        if (isTokenExpiredOrInvalid(jwt, response)) {
+            return;
+        }
+
+
+
         try {
             final String userEmail = jwtService.extractUsername(jwt);
             logger.info("Extracted username from JWT: " + userEmail);
@@ -73,17 +80,30 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
-                } else {
-                    logger.warning("JWT is invalid or expired for user: " + userEmail);
                 }
-            } else {
-                logger.info("User is already authenticated or userEmail is null");
             }
-
             filterChain.doFilter(request, response);
         } catch (Exception exception) {
             logger.severe("Exception occurred during JWT authentication: " + exception.getMessage());
             handlerExceptionResolver.resolveException(request, response, null, exception);
         }
     }
+
+    private boolean isTokenExpiredOrInvalid(String jwt, HttpServletResponse response) throws IOException {
+        try {
+            if (jwtService.isTokenExpired(jwt)) {
+                logger.warning("JWT is expired");
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.getWriter().write("JWT expired");
+                return true;
+            }
+        } catch (ExpiredJwtException e) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.getWriter().write("JWT expired");
+            return true;
+        }
+        return false;
+    }
 }
+
+

@@ -28,7 +28,7 @@ public class Transaction {
     @DecimalMin(value = "0.01", message = "Price must be greater than 0")
     private BigDecimal price;
 
-    @NonNull
+    @NotNull
     private String category;
 
     @NotNull(message = "Start date is required")
@@ -40,7 +40,6 @@ public class Transaction {
     @NotNull(message = "Recurring flag must be provided")
     private Boolean isRecurring;
 
-    @NotNull(message = "Recurrence type must be specified")
     private String recurrenceType;
 
     @NotNull(message = "Transaction type must be specified")

@@ -7,6 +7,7 @@ import com.backend.organiza.dtos.UserRegistrationDTO;
 import com.backend.organiza.entity.User;
 import com.backend.organiza.service.JwtService;
 import com.backend.organiza.service.UserService;
+import io.jsonwebtoken.ExpiredJwtException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -32,26 +33,19 @@ public class UserController {
     public ResponseEntity<LoginResponse> authenticate(@RequestBody LoginUserDto loginUserDto) {
         User authenticatedUser = userService.authenticate(loginUserDto);
 
-
-        String accessTokenJwt = jwtService.generateToken(authenticatedUser, JwtService.TokenType.ACCESS_TOKEN);
+        String accessTokenJwt = jwtService.generateToken(authenticatedUser, JwtService.TokenType.ACCESS_TOKEN, String.valueOf(authenticatedUser.getId()));
+        String refreshToken = authenticatedUser.getRefreshToken();
         //validate if creating a new refresh token is necessary
-        if(authenticatedUser.getRefreshToken() != null){
-            if(jwtService.isTokenValid(authenticatedUser.getRefreshToken(), authenticatedUser)){
-                LoginResponse loginResponse = new LoginResponse(
-                        new TokenDTO(accessTokenJwt, jwtService.getAccessTokenExpiration()),
-                        new TokenDTO(authenticatedUser.getRefreshToken(), jwtService.getRefreshTokenExpiration())
-                );
-                return ResponseEntity.ok(loginResponse);
+        if(refreshToken != null){
+            try {
+                jwtService.isTokenExpired(refreshToken);
+            } catch (ExpiredJwtException e) {
+                refreshToken = jwtService.generateToken(authenticatedUser, JwtService.TokenType.REFRESH_TOKEN, String.valueOf(authenticatedUser.getId()));
             }
         }
-
-
-        String refreshTokenJwt = jwtService.generateToken(authenticatedUser, JwtService.TokenType.REFRESH_TOKEN);
-        userService.saveRefreshToken(authenticatedUser, refreshTokenJwt);
-
         LoginResponse loginResponse = new LoginResponse(
                 new TokenDTO(accessTokenJwt, jwtService.getAccessTokenExpiration()),
-                new TokenDTO(refreshTokenJwt, jwtService.getRefreshTokenExpiration())
+                new TokenDTO(refreshToken, jwtService.getRefreshTokenExpiration())
         );
         return ResponseEntity.ok(loginResponse);
     }
@@ -87,7 +81,7 @@ public class UserController {
         }
 
         // Step 5: Generate a new access token
-        String newAccessToken = jwtService.generateToken(authenticatedUser.get(), JwtService.TokenType.ACCESS_TOKEN);
+        String newAccessToken = jwtService.generateToken(authenticatedUser.get(), JwtService.TokenType.ACCESS_TOKEN, String.valueOf(authenticatedUser.get().getId()));
 
         return ResponseEntity.ok(new TokenDTO(newAccessToken, jwtService.getAccessTokenExpiration()));
     }
@@ -109,9 +103,6 @@ public class UserController {
         userService.invalidateRefreshToken(authenticatedUser.get());
         return ResponseEntity.ok("User logged out successfully!");
     }
-
-
-
 
     @GetMapping("/{id}")
     public ResponseEntity<User> getUserById(@PathVariable UUID id) {

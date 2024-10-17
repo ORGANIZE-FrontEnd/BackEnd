@@ -114,8 +114,10 @@ public class TransactionService {
     private List<String> validateTransaction(TransactionDTO transactionDTO) {
         List<String> errorMessages = new ArrayList<>();
 
+        if(transactionDTO.isRecurring()){
+            validateRecurrenceType(transactionDTO.recurrenceType()).ifPresent(errorMessages::add);
+        }
         validateTransactionType(transactionDTO.transactionType()).ifPresent(errorMessages::add);
-        validateRecurrenceType(transactionDTO.recurrenceType()).ifPresent(errorMessages::add);
         validateCategory(transactionDTO.category(), transactionDTO.transactionType()).ifPresent(errorMessages::add);
 
         return errorMessages;
