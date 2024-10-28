@@ -4,6 +4,7 @@ import com.backend.organiza.dtos.ExpenseLimitDTO;
 import com.backend.organiza.dtos.ExpenseLimitResponse;
 import com.backend.organiza.entity.ExpenseLimit;
 import com.backend.organiza.service.ExpenseLimitService;
+import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -20,6 +21,7 @@ public class ExpenseLimitController {
     @Autowired
     private ExpenseLimitService expenseLimitService;
 
+    @Operation(summary = "Create an expenseLimit by user ID and category", description = "Create a expense limit for a specific month/year and category")
     @PostMapping()
     public ResponseEntity<ExpenseLimitResponse> createExpenseLimit(
             @PathVariable UUID userId,
@@ -32,6 +34,7 @@ public class ExpenseLimitController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "Update an expenseLimit by user ID and limitId")
     @PutMapping("/{limitId}")
     public ResponseEntity<ExpenseLimitResponse> updateExpenseLimit(
             @PathVariable UUID userId,
@@ -46,6 +49,7 @@ public class ExpenseLimitController {
     }
 
 
+    @Operation(summary = "Retrieves the list of limits By user ID")
     @GetMapping
     public ResponseEntity<List<ExpenseLimit>> getLimitsForUser(@PathVariable UUID userId) {
         List<ExpenseLimit> limits = expenseLimitService.getLimitsByUser(userId);
@@ -53,6 +57,7 @@ public class ExpenseLimitController {
     }
 
 
+    @Operation(summary = "Retrieves the list of limits by id and category")
     @GetMapping("/category")
     public ResponseEntity<ExpenseLimit> getLimitForCategory(
             @PathVariable UUID userId,

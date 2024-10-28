@@ -28,7 +28,6 @@ public class ExpenseLimitService {
 
         validateCategory(expenseLimitDTO.category(), "expense").ifPresent(errorMessages::add);
 
-        // Assuming month is already LocalDate and contains both month and year
         if (expenseLimitRepository.existsByUserIdAndCategoryAndMonth(userId, expenseLimitDTO.category(), expenseLimitDTO.month())) {
             errorMessages.add("A limit for this category and month already exists.");
         }

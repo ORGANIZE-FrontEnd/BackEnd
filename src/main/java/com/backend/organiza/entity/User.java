@@ -47,9 +47,6 @@ public class User implements UserDetails {
     @Column(name = "updated_at")
     private LocalDate updatedAt;
 
-    @Column
-    private String refreshToken;
-
     @OneToMany(mappedBy = "user", cascade = CascadeType.REMOVE)
     @JsonManagedReference
     private List<Transaction> transactions;

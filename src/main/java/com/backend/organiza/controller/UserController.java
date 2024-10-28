@@ -5,9 +5,13 @@ import com.backend.organiza.dtos.LoginUserDto;
 import com.backend.organiza.dtos.TokenDTO;
 import com.backend.organiza.dtos.UserRegistrationDTO;
 import com.backend.organiza.entity.User;
+import com.backend.organiza.service.CookieServiceImpl;
 import com.backend.organiza.service.JwtService;
 import com.backend.organiza.service.UserService;
 import io.jsonwebtoken.ExpiredJwtException;
+import io.swagger.v3.oas.annotations.Operation;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,8 +19,10 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Optional;
 import java.util.UUID;
 
+import static com.backend.organiza.service.CookieServiceImpl.eraseCookie;
+
 @RestController
-@CrossOrigin
+@CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true")
 @RequestMapping("/api/users")
 public class UserController {
 
@@ -24,98 +30,92 @@ public class UserController {
 
     private final UserService userService;
 
-    public UserController(JwtService jwtService, UserService userService) {
+    private final CookieServiceImpl cookieService;
+
+    public UserController(JwtService jwtService, UserService userService, CookieServiceImpl cookieService) {
         this.jwtService = jwtService;
         this.userService = userService;
+        this.cookieService = cookieService;
     }
 
+    @Operation(summary = "Login the user in ", description = "Creates a session cookie and an Access Token")
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> authenticate(@RequestBody LoginUserDto loginUserDto) {
+    public ResponseEntity<LoginResponse> authenticate(@RequestBody LoginUserDto loginUserDto, HttpServletResponse response) {
         User authenticatedUser = userService.authenticate(loginUserDto);
 
         String accessTokenJwt = jwtService.generateToken(authenticatedUser, JwtService.TokenType.ACCESS_TOKEN, String.valueOf(authenticatedUser.getId()));
-        String refreshToken = authenticatedUser.getRefreshToken();
-        //validate if creating a new refresh token is necessary
-        if(refreshToken != null){
-            try {
-                jwtService.isTokenExpired(refreshToken);
-            } catch (ExpiredJwtException e) {
-                refreshToken = jwtService.generateToken(authenticatedUser, JwtService.TokenType.REFRESH_TOKEN, String.valueOf(authenticatedUser.getId()));
-            }
-        }
+        String refreshToken = jwtService.generateToken(authenticatedUser, JwtService.TokenType.REFRESH_TOKEN, String.valueOf(authenticatedUser.getId()));
+
+        cookieService.saveEncryptedToken(response, refreshToken);
         LoginResponse loginResponse = new LoginResponse(
-                new TokenDTO(accessTokenJwt, jwtService.getAccessTokenExpiration()),
-                new TokenDTO(refreshToken, jwtService.getRefreshTokenExpiration())
-        );
+                new TokenDTO(accessTokenJwt, jwtService.getAccessTokenExpiration()));
+
         return ResponseEntity.ok(loginResponse);
     }
 
+    @Operation(summary = "Creates a user", description = "the user pass is encrypted using a secret key from jwtService")
     @PostMapping("/create")
     public ResponseEntity<User> createUser(@RequestBody UserRegistrationDTO userDTO) {
         User savedUser = userService.createUser(userDTO);
         return ResponseEntity.status(HttpStatus.CREATED).body(savedUser);
     }
 
-    @GetMapping("/refreshAccessToken/{refreshToken}")
-    public ResponseEntity<?> refreshAccessToken(@PathVariable String refreshToken) {
+    @Operation(summary = "Refresh the user Access Token", description = "Validate if the uses is present && refresh the access token and cookies if successfully")
+    @PostMapping("/refresh-token")
+    public ResponseEntity<?> refreshToken(HttpServletRequest request, HttpServletResponse response) {
 
-        // Step 1: Validate the refresh token signature and expiration
-        if (jwtService.isTokenExpired(refreshToken)) {
+        String refreshToken = cookieService.getDecryptedToken(request);
 
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Expired refresh token expirationTime: {}" + jwtService.getRefreshTokenExpiration());
+        if (refreshToken == null || jwtService.isTokenExpired(refreshToken)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("token invalid or expired");
         }
 
-        // Step 2: Extract the username from the refresh token
-        String username = jwtService.extractUsername(refreshToken);
+        try {
 
-        // Step 3: Load the user from the database by username
-        Optional<User> authenticatedUser = userService.getUserByUsername(username);
-        if (authenticatedUser.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not found");
+            String userName = jwtService.extractUsername(refreshToken);
+            Optional<User> user = userService.getUserByUsername(userName);
+
+            if(user.isPresent()){
+                String newAccessToken = jwtService.generateToken(user.get(), JwtService.TokenType.ACCESS_TOKEN, String.valueOf(user.get().getId()));
+
+                String newRefreshToken = jwtService.generateToken(user.get(), JwtService.TokenType.REFRESH_TOKEN, String.valueOf(user.get().getId()));
+                cookieService.saveEncryptedToken(response, newRefreshToken);
+                return ResponseEntity.status(HttpStatus.CREATED).body(new TokenDTO(newAccessToken, jwtService.getAccessTokenExpiration()));
+            }
+        } catch (ExpiredJwtException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(null);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
-
-        // Step 4: Check if the stored refresh token matches the one provided by the user
-        String storedRefreshToken = authenticatedUser.get().getRefreshToken();
-        if (!storedRefreshToken.equals(refreshToken)) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid refresh token");
-        }
-
-        // Step 5: Generate a new access token
-        String newAccessToken = jwtService.generateToken(authenticatedUser.get(), JwtService.TokenType.ACCESS_TOKEN, String.valueOf(authenticatedUser.get().getId()));
-
-        return ResponseEntity.ok(new TokenDTO(newAccessToken, jwtService.getAccessTokenExpiration()));
+        return null;
     }
+
 
     @PostMapping("/logout")
-    public ResponseEntity<?> logout(@RequestBody String refreshToken) {
-
-        String username = jwtService.extractUsername(refreshToken);
-
-        Optional<User> authenticatedUser = userService.getUserByUsername(username);
-        if (authenticatedUser.isEmpty() || !username.equals(authenticatedUser.get().getUsername())) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not found or doesnt match the auth user");
+    @Operation(summary = "Invalidates user session", description = "Erases user session cookie if present")
+    public ResponseEntity<String> logout(HttpServletResponse response) {
+        if(eraseCookie(cookieService.getCookieName(), response)){
+            return ResponseEntity.ok("User logged out successfully!");
         }
-
-        if (!authenticatedUser.get().getRefreshToken().equals(refreshToken)) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid refresh token");
-        }
-
-        userService.invalidateRefreshToken(authenticatedUser.get());
-        return ResponseEntity.ok("User logged out successfully!");
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User session invalid or not found.");
     }
 
+
+    @Operation(summary = "Get a user by ID", description = "Fetch a user by their unique ID")
     @GetMapping("/{id}")
     public ResponseEntity<User> getUserById(@PathVariable UUID id) {
         Optional<User> user = userService.getUserById(id);
         return user.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    @Operation(summary = "Update a user by ID", description = "Update a user by their unique ID")
     @PutMapping("/{id}")
     public ResponseEntity<User> updateUser(@PathVariable UUID id, @RequestBody User user) {
         User updatedUser = userService.updateUser(id, user);
         return updatedUser != null ? ResponseEntity.ok(updatedUser) : ResponseEntity.notFound().build();
     }
 
+    @Operation(summary = "Delete a user by ID", description = "Delete a user by their unique ID")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteUser(@PathVariable UUID id) {
         return userService.deleteUser(id) ? ResponseEntity.noContent().build() : ResponseEntity.notFound().build();

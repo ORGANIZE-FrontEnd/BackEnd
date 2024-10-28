@@ -14,6 +14,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
+import org.springframework.util.AntPathMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.servlet.HandlerExceptionResolver;
 
@@ -104,6 +105,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
         return false;
     }
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
+        String path = request.getRequestURI();
+        AntPathMatcher pathMatcher = new AntPathMatcher();
+
+        // Define paths to bypass filtering
+        return pathMatcher.match("/api/users/refresh-token", path) ||
+                pathMatcher.match("/v3/api-docs/**", path) ||  // OpenAPI JSON docs
+                pathMatcher.match("/swagger-ui/**", path) ||   // Swagger UI resources
+                pathMatcher.match("/swagger-ui.html", path);   // Swagger UI HTML page
+    }
+
 }
 
 

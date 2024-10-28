@@ -78,14 +78,4 @@ public class UserService {
         return false;
     }
 
-    public void saveRefreshToken(User user, String refreshToken) {
-        user.setRefreshToken(refreshToken);
-        userRepository.save(user);
-    }
-
-    public void invalidateRefreshToken(User user) {
-        user.setRefreshToken(null);
-        userRepository.save(user);
-    }
-
 }

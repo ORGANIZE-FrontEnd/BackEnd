@@ -21,6 +21,14 @@ public class SecurityConfiguration {
     private final AuthenticationProvider authenticationProvider;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
+    private static final String[] DOCUMENTATION_OPENAPI = {
+            "/docs/index.html",
+            "/organiza.html", "/organiza/**",
+            "/v3/api-docs/**",
+            "/swagger-ui-custom.html", "/swagger-ui.html", "/swagger-ui/**",
+            "/**.html", "/webjars/**", "/configuration/**", "/swagger-resources/**"
+    };
+
     public SecurityConfiguration(
             JwtAuthenticationFilter jwtAuthenticationFilter,
             AuthenticationProvider authenticationProvider
@@ -34,7 +42,9 @@ public class SecurityConfiguration {
         http.csrf()
                 .disable()
                 .authorizeHttpRequests()
-                .requestMatchers("/api/users/login", "/api/users/create", "/api/users/refreshAccessToken/{refreshToken}")
+                .requestMatchers(DOCUMENTATION_OPENAPI)
+                .permitAll()
+                .requestMatchers("/api/users/login", "/api/users/create", "/api/users/refresh-token", "/swagger-ui.html")
                 .permitAll()
                 .requestMatchers(HttpMethod.OPTIONS).permitAll() // Allow OPTIONS requests without authentication
                 .anyRequest()
@@ -50,6 +60,7 @@ public class SecurityConfiguration {
 
         return http.build();
     }
+
 
 
     @Bean
