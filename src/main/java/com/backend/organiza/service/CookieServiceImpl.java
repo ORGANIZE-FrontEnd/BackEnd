@@ -78,6 +78,7 @@ public class CookieServiceImpl{
             cookie.setHttpOnly(true);
             cookie.setMaxAge(expiryTime);
             cookie.setPath(cookiePath);
+            cookie.setAttribute("SameSite", "None");
             response.addCookie(cookie);
         } catch (NoSuchPaddingException | NoSuchAlgorithmException | InvalidKeyException | IllegalBlockSizeException |
                  BadPaddingException | InvalidAlgorithmParameterException e) {
