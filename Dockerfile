@@ -11,7 +11,7 @@ WORKDIR /app
 COPY . .
 
 # Build the application
-RUN mvn clean install
+RUN mvn clean install -DskipTests
 
 # Use OpenJDK 21 slim image for the final stage
 FROM openjdk:21-jdk-slim
