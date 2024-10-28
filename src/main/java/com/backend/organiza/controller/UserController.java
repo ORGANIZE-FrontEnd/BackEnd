@@ -55,8 +55,13 @@ public class UserController {
 
     @Operation(summary = "Creates a user", description = "the user pass is encrypted using a secret key from jwtService")
     @PostMapping("/create")
-    public ResponseEntity<User> createUser(@RequestBody UserRegistrationDTO userDTO) {
+    public ResponseEntity<?> createUser(@RequestBody UserRegistrationDTO userDTO) {
         User savedUser = userService.createUser(userDTO);
+
+        if(savedUser == null){
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("User with this email already exist.");
+        }
+
         return ResponseEntity.status(HttpStatus.CREATED).body(savedUser);
     }
 

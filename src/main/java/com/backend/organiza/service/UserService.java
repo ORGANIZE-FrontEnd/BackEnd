@@ -49,6 +49,12 @@ public class UserService {
         User user = new User();
         BeanUtils.copyProperties(userDTO, user);
         user.setPassword(passwordEncoder.encode(userDTO.password()));
+
+        Optional<User> optionalUser = getUserByUsername(userDTO.email());
+
+        if(optionalUser.isPresent())
+            return null;
+
         return userRepository.save(user);
     }
 
