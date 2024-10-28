@@ -74,7 +74,7 @@ public class CookieServiceImpl{
             final String cookiePath = "/";
 
             Cookie cookie = new Cookie(cookieName, encodedToken);
-            cookie.setSecure(false);
+            cookie.setSecure(true);
             cookie.setHttpOnly(true);
             cookie.setMaxAge(expiryTime);
             cookie.setPath(cookiePath);
@@ -131,7 +131,7 @@ public class CookieServiceImpl{
         cookie.setMaxAge(0);
         cookie.setPath("/");
         cookie.setHttpOnly(true);
-        cookie.setSecure(false);
+        cookie.setSecure(true);
 
         response.addCookie(cookie);
         LOGGER.info("Cookie erased successfully");

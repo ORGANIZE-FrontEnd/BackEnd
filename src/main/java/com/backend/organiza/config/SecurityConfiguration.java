@@ -67,7 +67,7 @@ public class SecurityConfiguration {
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        configuration.setAllowedOrigins(List.of("http://localhost:3000")); // Specify your frontend origin
+        configuration.setAllowedOrigins(List.of("https://672010697a9d4700081a0be9--organiza-frontend.netlify.app"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Content-Type", "X-ORGANIZA-JWT"));
         configuration.setAllowCredentials(true);

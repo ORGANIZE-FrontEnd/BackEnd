@@ -22,7 +22,7 @@ import java.util.UUID;
 import static com.backend.organiza.service.CookieServiceImpl.eraseCookie;
 
 @RestController
-@CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true")
+@CrossOrigin(origins = "https://672010697a9d4700081a0be9--organiza-frontend.netlify.app", allowCredentials = "true")
 @RequestMapping("/api/users")
 public class UserController {
 
