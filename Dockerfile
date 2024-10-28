@@ -1,7 +1,7 @@
 # Use the latest Ubuntu image as the build environment
 FROM ubuntu:latest AS build
 
-# Update package lists
+# Update package lists and install necessary packages
 RUN apt-get update && apt-get install -y openjdk-21-jdk maven
 
 # Set the working directory in the container
@@ -20,7 +20,7 @@ FROM openjdk:21-jdk-slim
 EXPOSE 8080
 
 # Copy the built JAR file from the build stage
-COPY --from=build /app/target/api-0.0.1-SNAPSHOT.jar app.jar
+COPY --from=build /app/target/organiza-0.0.1-SNAPSHOT.jar /app.jar
 
 # Define the entry point
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-jar", "/app.jar"]
