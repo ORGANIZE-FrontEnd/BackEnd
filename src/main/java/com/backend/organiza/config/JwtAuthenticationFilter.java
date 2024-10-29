@@ -110,12 +110,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
         String path = request.getRequestURI();
         AntPathMatcher pathMatcher = new AntPathMatcher();
-
-        // Define paths to bypass filtering
+        
         return pathMatcher.match("/api/users/refresh-token", path) ||
-                pathMatcher.match("/v3/api-docs/**", path) ||  // OpenAPI JSON docs
-                pathMatcher.match("/swagger-ui/**", path) ||   // Swagger UI resources
-                pathMatcher.match("/swagger-ui.html", path);   // Swagger UI HTML page
+                pathMatcher.match("/v3/api-docs/**", path) ||
+                pathMatcher.match("/swagger-ui/**", path) ||
+                pathMatcher.match("/api/ping", path) ||
+                pathMatcher.match("/swagger-ui.html", path);
     }
 
 }

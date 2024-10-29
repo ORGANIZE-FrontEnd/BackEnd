@@ -44,7 +44,7 @@ public class SecurityConfiguration {
                 .authorizeHttpRequests()
                 .requestMatchers(DOCUMENTATION_OPENAPI)
                 .permitAll()
-                .requestMatchers("/api/users/login", "/api/users/create", "/api/users/refresh-token", "/swagger-ui.html")
+                .requestMatchers("/api/users/login", "/api/users/create", "/api/users/refresh-token", "/api/ping")
                 .permitAll()
                 .requestMatchers(HttpMethod.OPTIONS).permitAll() // Allow OPTIONS requests without authentication
                 .anyRequest()
