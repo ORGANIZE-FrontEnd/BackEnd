@@ -49,10 +49,10 @@ public class ExpenseLimitController {
     }
 
 
-    @Operation(summary = "Retrieves the list of limits By user ID")
+    @Operation(summary = "Retrieves the list of limits By MM/YYYY and userId")
     @GetMapping
-    public ResponseEntity<List<ExpenseLimit>> getLimitsForUser(@PathVariable UUID userId) {
-        List<ExpenseLimit> limits = expenseLimitService.getLimitsByUser(userId);
+    public ResponseEntity<List<ExpenseLimit>> getLimitsForUser(@PathVariable UUID userId, @RequestParam LocalDate month) {
+        List<ExpenseLimit> limits = expenseLimitService.getLimitsByUser(userId, month);
         return ResponseEntity.ok(limits);
     }
 

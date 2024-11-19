@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static com.backend.organiza.utils.ValidatorUtil.validateCategory;
 
@@ -74,12 +75,6 @@ public class ExpenseLimitService {
             return new ExpenseLimitResponse(null, errorMessages);
         }
 
-        if (!existingLimit.getCategory().equals(expenseLimitDTO.category()) ||
-                !existingLimit.getMonth().equals(expenseLimitDTO.month())) {
-            errorMessages.add("The category or month doesn't match the existing limit.");
-            return new ExpenseLimitResponse(null, errorMessages);
-        }
-
         existingLimit.setLimitValue(expenseLimitDTO.limitValue());
 
         expenseLimitRepository.save(existingLimit);
@@ -88,8 +83,17 @@ public class ExpenseLimitService {
     }
 
 
-    public List<ExpenseLimit> getLimitsByUser(UUID userId) {
-        return expenseLimitRepository.findByUserId(userId);
+    public List<ExpenseLimit> getLimitsByUser(UUID userId, LocalDate month) {
+        int year = month.getYear();
+        int monthValue = month.getMonthValue();
+        List<ExpenseLimit> expenseLimits = expenseLimitRepository.findByUserId(userId);
+
+        return expenseLimits.stream()
+                .filter(expenseLimit -> {
+                    LocalDate limitDate = expenseLimit.getMonth();
+                    return limitDate.getYear() == year && limitDate.getMonthValue() == monthValue;
+                })
+                .collect(Collectors.toList());
     }
 
     public Optional<ExpenseLimit> getLimitForCategory(UUID userId, String category, LocalDate month) {

@@ -10,12 +10,14 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.*;
+import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Optional;
@@ -41,7 +43,6 @@ public class CookieServiceImpl{
 
         return cookie.filter(value -> value.getName() != null).isPresent();
     }
-
     public void saveEncryptedToken(HttpServletResponse response , String token) {
         if(token == null || token.isEmpty()) {
             LOGGER.error("ERROR AT SAVE COOKIE: The provided TOKEN is null");
@@ -60,15 +61,22 @@ public class CookieServiceImpl{
 
         try {
             byte[] decodedKey = Base64.getDecoder().decode(secretKey);
-
-            byte[] ivBytes = new byte[]{'B', 'a', 'e', 'l', 'd', 'u', 'n', 'g', 'I', 's', 'G', 'r', 'e', 'a', 't', '!'};
-            IvParameterSpec ivParameterSpec = new IvParameterSpec(ivBytes);
-
-            Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
             SecretKey originalKey = new SecretKeySpec(Arrays.copyOf(decodedKey, 16), "AES");
-            cipher.init(Cipher.ENCRYPT_MODE, originalKey, ivParameterSpec);
+
+            byte[] ivBytes = new byte[12];
+            SecureRandom secureRandom = new SecureRandom();
+            secureRandom.nextBytes(ivBytes);
+            GCMParameterSpec gcmSpec = new GCMParameterSpec(128, ivBytes);
+
+            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+            cipher.init(Cipher.ENCRYPT_MODE, originalKey, gcmSpec);
             byte[] cipherText = cipher.doFinal(token.getBytes(StandardCharsets.UTF_8));
-            String encodedToken = Base64.getEncoder().encodeToString(cipherText);
+
+            byte[] combinedData = new byte[ivBytes.length + cipherText.length];
+            System.arraycopy(ivBytes, 0, combinedData, 0, ivBytes.length);
+            System.arraycopy(cipherText, 0, combinedData, ivBytes.length, cipherText.length);
+
+            String encodedToken = Base64.getEncoder().encodeToString(combinedData);
 
             final int expiryTime = 60 * 30;
             final String cookiePath = "/";
@@ -80,8 +88,7 @@ public class CookieServiceImpl{
             cookie.setPath(cookiePath);
             cookie.setAttribute("SameSite", "None");
             response.addCookie(cookie);
-        } catch (NoSuchPaddingException | NoSuchAlgorithmException | InvalidKeyException | IllegalBlockSizeException |
-                 BadPaddingException | InvalidAlgorithmParameterException e) {
+        } catch (Exception e) {
             LOGGER.error("ERROR AT CREATING COOKIE: ", e);
         }
     }
@@ -100,26 +107,31 @@ public class CookieServiceImpl{
         byte[] decodedKey = Base64.getDecoder().decode(secretKey);
 
         try {
-            if (cookieExists(request) ) {
+            if (cookieExists(request)) {
                 String encryptedToken = getCookie(request, cookieName).getValue();
-                byte[] ivBytes = new byte[]{'B', 'a', 'e', 'l', 'd', 'u', 'n', 'g', 'I', 's', 'G', 'r', 'e', 'a', 't', '!'};
-                IvParameterSpec ivParameterSpec = new IvParameterSpec(ivBytes);
-                Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+                byte[] combinedData = Base64.getDecoder().decode(encryptedToken);
+
+                byte[] ivBytes = Arrays.copyOfRange(combinedData, 0, 12);
+                byte[] cipherText = Arrays.copyOfRange(combinedData, 12, combinedData.length);
+
+                GCMParameterSpec gcmSpec = new GCMParameterSpec(128, ivBytes);
+                Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
                 SecretKey originalKey = new SecretKeySpec(Arrays.copyOf(decodedKey, 16), "AES");
-                cipher.init(Cipher.DECRYPT_MODE, originalKey, ivParameterSpec);
-                byte[] cipherText = cipher.doFinal(Base64.getDecoder().decode(encryptedToken));
+                cipher.init(Cipher.DECRYPT_MODE, originalKey, gcmSpec);
+
+                byte[] plainText = cipher.doFinal(cipherText);
                 LOGGER.info("DECRYPT COOKIE SERVICE - Token obtained successfully");
-                return new String(cipherText);
+                return new String(plainText, StandardCharsets.UTF_8);
             } else {
                 LOGGER.info("ERROR AT DECRYPT COOKIE - No valid cookies found");
                 return null;
             }
-        } catch (NoSuchPaddingException | NoSuchAlgorithmException | IllegalBlockSizeException | BadPaddingException |
-                 InvalidKeyException | InvalidAlgorithmParameterException e) {
+        } catch (Exception e) {
             LOGGER.error("ERROR AT DECRYPT COOKIE: ", e);
             return null;
         }
     }
+
 
 
     public static Boolean eraseCookie(String cookieName, HttpServletResponse response) {
