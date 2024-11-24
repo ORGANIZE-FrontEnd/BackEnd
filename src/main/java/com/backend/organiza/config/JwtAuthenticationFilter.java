@@ -19,6 +19,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.servlet.HandlerExceptionResolver;
 
 import java.io.IOException;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 @Component
@@ -46,33 +47,31 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
-        final String jwt = request.getHeader("X-ORGANIZA-JWT");
-        logger.info("Received request to: " + request.getRequestURI());
+        String jwt = request.getHeader("X-ORGANIZA-JWT");
+        logger.info(() -> "Request URI: " + request.getRequestURI());
 
-        if (jwt == null) {
-            logger.warning("JWT token is missing in the request header");
+        if (jwt == null || jwt.isEmpty()) {
+            logger.warning("JWT token is missing or empty");
             filterChain.doFilter(request, response);
             return;
         }
 
-        if (isTokenExpiredOrInvalid(jwt, response)) {
-            return;
-        }
-
-
-
         try {
-            final String userEmail = jwtService.extractUsername(jwt);
-            logger.info("Extracted username from JWT: " + userEmail);
+            if (isTokenExpiredOrInvalid(jwt)) {
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.getWriter().write("Invalid or expired JWT token");
+                return;
+            }
 
-            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String userEmail = jwtService.extractUsername(jwt);
+            logger.info(() -> "Extracted username: " + userEmail);
 
-            if (userEmail != null && authentication == null) {
-                UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
-                logger.info("Loaded UserDetails for: " + userEmail);
+            Authentication currentAuth = SecurityContextHolder.getContext().getAuthentication();
+
+            if (userEmail != null && currentAuth == null) {
+                UserDetails userDetails = userDetailsService.loadUserByUsername(userEmail);
 
                 if (jwtService.isTokenValid(jwt, userDetails)) {
-                    logger.info("JWT is valid for user: " + userEmail);
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                             userDetails,
                             null,
@@ -81,43 +80,38 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
+
+                    logger.info(() -> "Authentication set for user: " + userEmail);
                 }
             }
             filterChain.doFilter(request, response);
-        } catch (Exception exception) {
-            logger.severe("Exception occurred during JWT authentication: " + exception.getMessage());
-            handlerExceptionResolver.resolveException(request, response, null, exception);
+        } catch (Exception ex) {
+            logger.log(Level.SEVERE, "Error during JWT processing", ex);
+            handlerExceptionResolver.resolveException(request, response, null, ex);
         }
     }
 
-    private boolean isTokenExpiredOrInvalid(String jwt, HttpServletResponse response) throws IOException {
+    private boolean isTokenExpiredOrInvalid(String jwt) {
         try {
-            if (jwtService.isTokenExpired(jwt)) {
-                logger.warning("JWT is expired");
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                response.getWriter().write("JWT expired");
-                return true;
-            }
-        } catch (ExpiredJwtException e) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.getWriter().write("JWT expired");
+            return jwtService.isTokenExpired(jwt);
+        } catch (ExpiredJwtException ex) {
+            logger.warning("JWT expired: " + ex.getMessage());
+            return true;
+        } catch (Exception ex) {
+            logger.warning("Invalid JWT token: " + ex.getMessage());
             return true;
         }
-        return false;
     }
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
         String path = request.getRequestURI();
         AntPathMatcher pathMatcher = new AntPathMatcher();
-        
+
         return pathMatcher.match("/api/users/refresh-token", path) ||
-                pathMatcher.match("/v3/api-docs/**", path) ||
-                pathMatcher.match("/swagger-ui/**", path) ||
-                pathMatcher.match("/api/ping", path) ||
-                pathMatcher.match("/swagger-ui.html", path);
+                path.startsWith("/v3/api-docs") ||
+                path.startsWith("/swagger-ui") ||
+                path.equals("/swagger-ui.html") ||
+                path.equals("/api/ping");
     }
-
 }
-
-

@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: organize-backend-image
+    container_name: organiza-backend
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev  # Definindo o perfil ativo
+      - DB_URL=jdbc:postgresql://localhost:5432/organiza_db
+      - DB_USERNAME=root
+      - DB_PASSWORD=randomPass
+      - JWT_ENCRYPTION_KEY=3cfa76ef14937c1c0ea519f8fc057a80fcd04a7420f8e8bcd0a7567c272e007b
+    networks:
+      - organizanet
+
+networks:
+  organizanet:
+    driver: bridge
