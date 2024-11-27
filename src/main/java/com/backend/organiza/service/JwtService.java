@@ -37,39 +37,24 @@ public class JwtService {
     @Getter
     private long refreshTokenExpiration;
 
-    /**
-     * Extrai o nome de usuário (subject) do token JWT.
-     */
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
     }
 
-    /**
-     * Extrai um claim específico do token.
-     */
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
         final Claims claims = extractAllClaims(token);
         return claimsResolver.apply(claims);
     }
 
-    /**
-     * Gera um token com base no tipo (ACCESS/REFRESH).
-     */
     public String generateToken(UserDetails userDetails, TokenType tokenType, String userId) {
         return generateToken(new HashMap<>(), userDetails, tokenType, userId);
     }
 
-    /**
-     * Gera um token com claims adicionais.
-     */
     public String generateToken(Map<String, Object> extraClaims, UserDetails userDetails, TokenType tokenType, String userId) {
         long expiration = (tokenType == TokenType.ACCESS_TOKEN) ? accessTokenExpiration : refreshTokenExpiration;
         return buildToken(extraClaims, userDetails, expiration, userId);
     }
 
-    /**
-     * Constrói o token JWT.
-     */
     private String buildToken(
             Map<String, Object> extraClaims,
             UserDetails userDetails,
@@ -87,9 +72,6 @@ public class JwtService {
                 .compact();
     }
 
-    /**
-     * Verifica se um token é válido para um usuário.
-     */
     public boolean isTokenValid(String token, UserDetails userDetails) {
         try {
             final String username = extractUsername(token);
@@ -112,9 +94,6 @@ public class JwtService {
         }
     }
 
-    /**
-     * Verifica se o token está expirado.
-     */
     public boolean isTokenExpired(String token) {
         try {
             Date expirationDate = extractExpiration(token);
@@ -125,16 +104,10 @@ public class JwtService {
         }
     }
 
-    /**
-     * Extrai a data de expiração do token.
-     */
     private Date extractExpiration(String token) {
         return extractClaim(token, Claims::getExpiration);
     }
 
-    /**
-     * Extrai todos os claims do token.
-     */
     private Claims extractAllClaims(String token) {
         try {
             return Jwts.parserBuilder()
@@ -144,13 +117,10 @@ public class JwtService {
                     .getBody();
         } catch (JwtException e) {
             logger.error("Failed to parse JWT: {}", e.getMessage());
-            throw e; // Você pode lançar uma exceção customizada aqui
+            throw e;
         }
     }
 
-    /**
-     * Retorna a chave de assinatura.
-     */
     private Key getSignInKey() {
         if (secretKey == null || secretKey.isBlank()) {
             throw new IllegalStateException("Secret key is not configured properly!");
