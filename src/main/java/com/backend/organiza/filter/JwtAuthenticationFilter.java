@@ -1,4 +1,4 @@
-package com.backend.organiza.config;
+package com.backend.organiza.filter;
 
 import com.backend.organiza.service.JwtService;
 import io.jsonwebtoken.ExpiredJwtException;

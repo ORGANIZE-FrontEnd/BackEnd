@@ -53,17 +53,20 @@ public class UserController {
         return ResponseEntity.ok(loginResponse);
     }
 
-    @Operation(summary = "Creates a user", description = "the user pass is encrypted using a secret key from jwtService")
+    @Operation(summary = "Creates a user", description = "The user password is encrypted using a secret key from jwtService")
     @PostMapping("/create")
     public ResponseEntity<?> createUser(@RequestBody UserRegistrationDTO userDTO) {
         User savedUser = userService.createUser(userDTO);
 
-        if(savedUser == null){
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("User with this email already exist.");
+        // POC to include ExceptionHandling
+        if (savedUser == null) {
+            throw new IllegalArgumentException("User with this email already exists.");
         }
 
         return ResponseEntity.status(HttpStatus.CREATED).body(savedUser);
     }
+
+
 
     @Operation(summary = "Refresh the user Access Token", description = "Validate if the uses is present && refresh the access token and cookies if successfully")
     @PostMapping("/refresh-token")

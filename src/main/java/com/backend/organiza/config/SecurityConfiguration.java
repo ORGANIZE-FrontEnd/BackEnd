@@ -1,5 +1,6 @@
 package com.backend.organiza.config;
 
+import com.backend.organiza.filter.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
