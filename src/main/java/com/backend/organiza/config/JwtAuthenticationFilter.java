@@ -2,6 +2,7 @@ package com.backend.organiza.config;
 
 import com.backend.organiza.service.JwtService;
 import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.MalformedJwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -84,6 +85,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     logger.info(() -> "Authentication set for user: " + userEmail);
                 }
             }
+
             filterChain.doFilter(request, response);
         } catch (Exception ex) {
             logger.log(Level.SEVERE, "Error during JWT processing", ex);
@@ -96,6 +98,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return jwtService.isTokenExpired(jwt);
         } catch (ExpiredJwtException ex) {
             logger.warning("JWT expired: " + ex.getMessage());
+            return true;
+        } catch (MalformedJwtException ex) {
+            logger.warning("Malformed JWT token: " + ex.getMessage());
             return true;
         } catch (Exception ex) {
             logger.warning("Invalid JWT token: " + ex.getMessage());
